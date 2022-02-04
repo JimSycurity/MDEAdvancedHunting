@@ -1,0 +1,23 @@
+// Look for instances where Microsoft Recommended WDAC block rule apps were executed, even if as a child process.
+// This query isn't alert-ready and wouldn't be without very specific tuning for an individual tenant.
+let timeframe=30d;
+// Array of Apps from https://docs.microsoft.com/en-us/windows/security/threat-protection/windows-defender-application-control/microsoft-recommended-block-rules
+let Apps= dynamic([@"addinprocess.exe", @"addinprocess32.exe", @"addinutil.exe", @"aspnet_compiler.exe", @"bash.exe", @"bginfo.exe", 
+@"cdb.exe", @"cscript.exe", @"csi.exe", @"dbghost.exe", @"dbgsvc.exe", @"dnx.exe", @"dotnet.exe", @"fsi.exe", @"fsiAnyCpu.exe",
+@"infdefaultinstall.exe", @"kd.exe", @"kill.exe", @"lxssmanager.dll", @"lxrun.exe", @"Microsoft.Build.dll", @"Microsoft.Build.Framework.dll", 
+@"Microsoft.Workflow.Compiler.exe", @"msbuild.exe", @"msbuild.dll", @"mshta.exe", @"ntkd.exe", @"ntsd.exe", @"powershellcustomhost.exe", 
+@"rcsi.exe", @"runscripthelper.exe", @"texttransform.exe", @"visualuiaverifynative.exe", @"system.management.automation.dll",
+@"wfc.exe", @"windbg.exe", @"wmic.exe", @"wscript.exe", @"wsl.exe", @"wslconfig.exe", @"wslhost.exe"]);
+DeviceEvents
+| where Timestamp >= ago(timeframe)
+| where InitiatingProcessParentFileName has_any (Apps) or InitiatingProcessFileName has_any (Apps)
+// Allowlist Entries.  Modify to suit your environment.
+// List .NET SDKS
+| where InitiatingProcessCommandLine != @"""dotnet.exe"" --list-sdks"
+// .NET Pipeline Rebuild
+| where InitiatingProcessCommandLine != @"""addinutil.exe"" -PipelineRoot:""c:\Program Files (x86)\Common Files\Microsoft Shared\VSTA\Pipeline.v10.0\."" -Rebuild"
+// End Allowlist Entries
+// Project the InitiatingProcessParentFileName to the front
+| project-reorder Timestamp, DeviceName, InitiatingProcessParentFileName, InitiatingProcessFileName
+| project-away DeviceId
+| sort by Timestamp desc 
