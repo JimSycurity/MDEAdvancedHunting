@@ -1,0 +1,29 @@
+// Look for instances where LoLBAS (Living Off The Land Binaries, Scripts and Libraries) make successful network connections.
+// This query isn't alert-ready and wouldn't be without very specific tuning for an individual tenant.
+let timeframe=1d;
+// Array of Execute tagged LoLBAS from https://lolbas-project.github.io/#/execute  (credit to Oddvar Moe)
+// Removed Explorer.exe for noise purposes
+let LOLBins= dynamic([@"AT.exe", @"ATbroker.exe", @"Bash.exe", @"Bitsadmin.exe", @"CertOC.exe", @"Cmstp.exe", @"Diskshadow.exe", @"Dllhost.exe", 
+    @"Dnscmd.exe", @"Extexport.exe", @"Forfiles.exe", @"Ftp.exe", @"GPscript.exe", @"Hh.exe", @"Ie4uinit.exe", @"Ieexec.exe",
+    @"Infdefaultinstall.exe", @"Installutil.exe", @"Mavinject.exe", @"Microsoft.Workflow.Compiler.exe", @"Mmc.exe", @"MSBuild.exe", @"Msconfig.exe",
+    @"Msdt.exe", @"Mshta.exe", @"Netsh.exe", @"Odbconf.exe", @"OfflineScannerShell.exe", @"Pcalua.exe", @"Pcwrun.exe", @"Pnputil.exe", @"Presentationhost.exe",
+    @"Rasautou.exe", @"Regasm.exe", @"Register-cimprovider.exe", @"Regsvcs.exe", @"Regsvr32.exe", @"Rundll32.exe", @"Runscripthelper.exe", @"Schtasks.exe",
+    @"Scriptrunner.exe", @"SettingsSyncHost.exe", @"Stordiag.exe", @"SyncAppvPublishingServer.exe", @"Ttdinject.exe", @"Tttracer.exe", @"Verclsid.exe",
+    @"Wab.exe", @"Wmic.exe", @"WorkFolders.exe", @"wuauclt.exe", @"Xwizard.exe", @"AgentExecutor.exe", @"Appvlp.exe", @"Bginfo.exe", @"Cdb.exe",
+    @"coregen.exe", @"csi.exe", @"DefaultPack.exe", @"Devtoolslauncher.exe", @"dnx.exe", @"Dotnet.exe", @"Dxcap.exe", @"Mftrace.exe", @"Msdeploy.exe",
+    @"msxls.exe", @"Procdump(64).exe", @"rcsi.exe", @"Remote.exe", @"Sqlps.exe", @"SQLToolsPS.exe", @"Squirrel.exe", @"te.exe", @"Tracker.exe", @"Update.exe",
+    @"VSIISExeLauncher.exe", @"vsjitdebugger.exe", @"Wsl.exe", @"Certutil.exe",  @"Cscript.exe", @"Dllhost.exe"]);
+DeviceNetworkEvents
+| where Timestamp >= ago(timeframe)
+| where ActionType == @"ConnectionSuccess"
+| where InitiatingProcessParentFileName has_any (LOLBins)
+// Allowlist Entries
+// Remove Office connections
+| where InitiatingProcessVersionInfoFileDescription != @"Microsoft Office Trusted Web Host"
+// Remove Teams Updates
+| where InitiatingProcessVersionInfoFileDescription != @"Microsoft Teams"
+// End Allowlist Entries
+// Project the InitiatingProcessParentFileName to the front
+| project-reorder Timestamp, InitiatingProcessParentFileName
+| project-away DeviceId, ActionType
+| sort by Timestamp desc 
