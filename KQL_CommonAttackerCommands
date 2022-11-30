@@ -1,0 +1,7 @@
+KQL query for MDE Advanced Hunting or Azure Sentinel based off Randy Pargman's work:
+
+DeviceProcessEvents
+| where FileName has_any ("net.exe", "adfind.exe", "nltest.exe", "whoami.exe", "route.exe", "ipconfig.exe", "nslookup.exe", "tasklist.exe", "systeminfo.exe", "qprocess.exe", "type.exe", "at.exe", "wmic.exe")
+| summarize make_set (ProcessCommandLine), count() by bin(Timestamp, 3m), DeviceName, DeviceId, InitiatingProcessParentFileName
+| where array_length(set_ProcessCommandLine) > 3
+| where InitiatingProcessParentFileName != "userinit.exe"
